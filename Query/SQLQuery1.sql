@@ -1,0 +1,18 @@
+﻿Use MiniGameV4;
+
+CREATE TABLE Player
+(
+	PlayerKey INTEGER NOT NULL PRIMARY KEY IDENTITY(1,1),
+	Name VARCHAR(256) NOT NULL,
+);
+
+CREATE TABLE GameRecord
+(
+	GameRecordKey INTEGER NOT NULL PRIMARY KEY IDENTITY(1,1),
+	PlayerKey INTEGER NOT NULL,
+	FoodConsumed INTEGER NOT NULL,
+);
+
+ALTER TABLE GameRecord
+ADD CONSTRAINT FK_PlayerGameRecord
+FOREIGN KEY (PlayerKey) REFERENCES Player(PlayerKey);
