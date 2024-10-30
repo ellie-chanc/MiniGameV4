@@ -20,7 +20,6 @@ namespace MiniGameV4.Record
         private int consumedFoodNumber;
         private CharacterState playerState;
         private string connectionStr = "Data Source=(local); Initial Catalog=MiniGameV4; Integrated Security=SSPI; Encrypt=false";
-        private SqlConnection con;
 
         public Dashboard(int height, int width)
         {
@@ -29,29 +28,36 @@ namespace MiniGameV4.Record
             consumedFoodNumber = 0;
             playerName = SetPlayerName();
 
-            con = new SqlConnection(connectionStr);
-            SqlCommand command = con.CreateCommand();
-
+            // create new player if not already existed in database
             if (!CheckExistingPlayer())
             {
-                // create new player in database if not already exist
-                command.CommandText = "INSERT INTO Player(Name) VALUES (@Name);";
-                command.Parameters.Clear();
-                command.Parameters.AddWithValue("@Name", playerName);
-                con.Open();
-                command.ExecuteNonQuery();
-                con.Close();
+                using (SqlConnection con = new SqlConnection(connectionStr))
+                {
+                    con.Open();
+                    using (SqlCommand command = new SqlCommand())
+                    {
+                        command.Connection = con;
+                        command.CommandText = "INSERT INTO Player(Name) VALUES (@Name);";
+                        command.Parameters.AddWithValue("@Name", playerName);
+                        command.ExecuteNonQuery();
+                    }
+                }
             }
 
             // create new game record in database
-            command.CommandText = "INSERT INTO GameRecord(PlayerKey, FoodConsumed) VALUES(@PlayerKey, @FoodConsumed);";
-            command.Parameters.Clear();
-            command.Parameters.AddWithValue("@PlayerKey", GetPlayerKey());
-            command.Parameters.AddWithValue("@FoodConsumed", 0);
-            con.Open();
-            command.ExecuteNonQuery();
-            con.Close();
-
+            using (SqlConnection con = new SqlConnection(connectionStr))
+            {
+                con.Open();
+                using (SqlCommand command = new SqlCommand())
+                {
+                    command.Connection = con;
+                    command.CommandText = "INSERT INTO GameRecord(PlayerKey, FoodConsumed) VALUES(@PlayerKey, @FoodConsumed);";
+                    command.Parameters.AddWithValue("@PlayerKey", GetPlayerKey());
+                    command.Parameters.AddWithValue("@FoodConsumed", 0);
+                    command.ExecuteNonQuery();
+                }
+            }
+            
             PrintDashboard();
         }
 
@@ -60,15 +66,18 @@ namespace MiniGameV4.Record
             consumedFoodNumber++;
 
             // update database
-            SqlCommand command = con.CreateCommand();
-            command.CommandText = "UPDATE GameRecord SET FoodConsumed = @FoodConsumed WHERE PlayerKey = @PlayerKey AND GameRecordKey = @GameRecordKey;";
-            command.Parameters.Clear();
-            command.Parameters.AddWithValue("@FoodConsumed", consumedFoodNumber);
-            command.Parameters.AddWithValue("@PlayerKey", GetPlayerKey());
-            command.Parameters.AddWithValue("@GameRecordKey", GetGameRecordKey());
-            con.Open();
-            command.ExecuteNonQuery();
-            con.Close();
+            using (SqlConnection con = new SqlConnection(connectionStr))
+            {
+                con.Open();
+                using (SqlCommand command = new SqlCommand())
+                {
+                    command.Connection = con;
+                    command.CommandText = "UPDATE GameRecord SET FoodConsumed = @FoodConsumed WHERE GameRecordKey = @GameRecordKey;";
+                    command.Parameters.AddWithValue("@FoodConsumed", consumedFoodNumber);
+                    command.Parameters.AddWithValue("@GameRecordKey", GetGameRecordKey());
+                    command.ExecuteNonQuery();
+                }
+            }
 
             PrintDashboard();
         }
@@ -150,19 +159,22 @@ namespace MiniGameV4.Record
         {
             int key = 0;
 
-            SqlCommand command = con.CreateCommand();
-            command.CommandText = "SELECT PlayerKey FROM Player WHERE Name = @name;";
-            command.Parameters.Clear();
-            command.Parameters.AddWithValue("@name", playerName);
-            con.Open();
-            using (SqlDataReader reader = command.ExecuteReader())
+            using (SqlConnection con = new SqlConnection(connectionStr))
             {
-                while (reader.Read())
+                con.Open();
+                using (SqlCommand command = new SqlCommand())
                 {
-                    key = (int)reader["PlayerKey"];
+                    command.Connection = con;
+                    command.CommandText = "SELECT PlayerKey FROM Player WHERE Name = @name;";
+                    command.Parameters.AddWithValue("@name", playerName);
+                    SqlDataReader reader = command.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        key = (int)reader["PlayerKey"];
+                    }
                 }
             }
-            con.Close();
+
             return key;
         }
 
@@ -170,44 +182,49 @@ namespace MiniGameV4.Record
         {
             int key = 0;
 
-            SqlCommand command = con.CreateCommand();
-            command.CommandText = "SELECT GameRecordKey FROM GameRecord WHERE PlayerKey = @PlayerKey;";
-            command.Parameters.Clear();
-            command.Parameters.AddWithValue("@PlayerKey", GetPlayerKey());
-            con.Open();
-            using (SqlDataReader reader = command.ExecuteReader())
+            using (SqlConnection con = new SqlConnection(connectionStr))
             {
-                while (reader.Read())
+                con.Open();
+                using (SqlCommand command = new SqlCommand())
                 {
-                    key = (int)reader["GameRecordKey"];
+                    command.Connection = con;
+                    command.CommandText = "SELECT GameRecordKey FROM GameRecord WHERE PlayerKey = @PlayerKey;";
+                    command.Parameters.AddWithValue("@PlayerKey", GetPlayerKey());
+                    SqlDataReader reader = command.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        key = (int)reader["GameRecordKey"];
+                    }
                 }
             }
 
-            con.Close();
             return key;
         }
 
         private bool CheckExistingPlayer()
         {
             bool exist = false;
-            SqlCommand command = con.CreateCommand();
-            command.CommandText = "SELECT Name FROM Player WHERE Name = @name;";
-            command.Parameters.Clear();
-            command.Parameters.AddWithValue("@name", playerName);
-            con.Open();
-            using (SqlDataReader reader = command.ExecuteReader())
-            {
-                while (reader.Read())
-                {
-                    if ((string)reader["Name"] == playerName)
-                    {
 
-                        exist = true;
+            using (SqlConnection con = new SqlConnection(connectionStr))
+            {
+                con.Open();
+                using (SqlCommand command = new SqlCommand())
+                {
+                    command.Connection = con;
+                    command.CommandText = "SELECT Name FROM Player WHERE Name = @name;";
+                    command.Parameters.AddWithValue("@name", playerName);
+                    SqlDataReader reader = command.ExecuteReader();
+                    while (reader.Read())
+                    {
+                        if ((string)reader["Name"] == playerName)
+                        {
+
+                            exist = true;
+                        }
                     }
                 }
             }
 
-            con.Close();
             return exist;
         }
     }
