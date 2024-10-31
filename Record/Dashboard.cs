@@ -8,6 +8,7 @@ using MiniGameV4.Exceptions;
 using MiniGameV4.Role;
 using Microsoft.Data.SqlClient;
 using System.Reflection.Metadata.Ecma335;
+using System.Net.Http.Headers;
 
 namespace MiniGameV4.Record
 {
@@ -19,7 +20,7 @@ namespace MiniGameV4.Record
         private const int dashboardHeight = 3;
         private int consumedFoodNumber;
         private CharacterState playerState;
-        private string connectionStr = "Data Source=(local); Initial Catalog=MiniGameV4; Integrated Security=SSPI; Encrypt=false";
+        private string connectionStr = "Data Source=L-6BKGP34;Initial Catalog=MiniGameV4;Integrated Security=True;Encrypt=False;Trust Server Certificate=True";
 
         public Dashboard(int height, int width)
         {
@@ -33,12 +34,19 @@ namespace MiniGameV4.Record
             {
                 using (SqlConnection con = new SqlConnection(connectionStr))
                 {
-                    con.Open();
                     using (SqlCommand command = new SqlCommand())
                     {
+                        // set command properties
                         command.Connection = con;
                         command.CommandText = "INSERT INTO Player(Name) VALUES (@Name);";
-                        command.Parameters.AddWithValue("@Name", playerName);
+                        
+                        // set parameters of command
+                        SqlParameter nameParam = new SqlParameter("Name", System.Data.SqlDbType.NVarChar);
+                        nameParam.Value = playerName;
+                        command.Parameters.Add(nameParam);
+                        
+                        // open connection and execute query
+                        con.Open();
                         command.ExecuteNonQuery();
                     }
                 }
@@ -47,13 +55,20 @@ namespace MiniGameV4.Record
             // create new game record in database
             using (SqlConnection con = new SqlConnection(connectionStr))
             {
-                con.Open();
                 using (SqlCommand command = new SqlCommand())
                 {
                     command.Connection = con;
                     command.CommandText = "INSERT INTO GameRecord(PlayerKey, FoodConsumed) VALUES(@PlayerKey, @FoodConsumed);";
-                    command.Parameters.AddWithValue("@PlayerKey", GetPlayerKey());
-                    command.Parameters.AddWithValue("@FoodConsumed", 0);
+
+                    SqlParameter PlayerKeyParam = new SqlParameter("PlayerKey", System.Data.SqlDbType.Int);
+                    PlayerKeyParam.Value = GetPlayerKey();
+                    command.Parameters.Add(PlayerKeyParam);
+
+                    SqlParameter FoodConsumedParam = new SqlParameter("FoodConsumed", System.Data.SqlDbType.Int);
+                    FoodConsumedParam.Value = 0;
+                    command.Parameters.Add(FoodConsumedParam);
+
+                    con.Open();
                     command.ExecuteNonQuery();
                 }
             }
@@ -68,13 +83,20 @@ namespace MiniGameV4.Record
             // update database
             using (SqlConnection con = new SqlConnection(connectionStr))
             {
-                con.Open();
                 using (SqlCommand command = new SqlCommand())
                 {
                     command.Connection = con;
                     command.CommandText = "UPDATE GameRecord SET FoodConsumed = @FoodConsumed WHERE GameRecordKey = @GameRecordKey;";
-                    command.Parameters.AddWithValue("@FoodConsumed", consumedFoodNumber);
-                    command.Parameters.AddWithValue("@GameRecordKey", GetGameRecordKey());
+
+                    SqlParameter FoodConsumedParam = new SqlParameter("FoodConsumed", System.Data.SqlDbType.Int);
+                    FoodConsumedParam.Value = consumedFoodNumber;
+                    command.Parameters.Add(FoodConsumedParam);
+
+                    SqlParameter GameRecordKeyParam = new SqlParameter("GameRecordKey", System.Data.SqlDbType.Int);
+                    GameRecordKeyParam.Value = GetGameRecordKey();
+                    command.Parameters.Add(GameRecordKeyParam);
+
+                    con.Open();
                     command.ExecuteNonQuery();
                 }
             }
@@ -152,7 +174,6 @@ namespace MiniGameV4.Record
                     Console.Write(" ");
                 }
             }
-
         }
 
         private int GetPlayerKey()
@@ -161,16 +182,18 @@ namespace MiniGameV4.Record
 
             using (SqlConnection con = new SqlConnection(connectionStr))
             {
-                con.Open();
                 using (SqlCommand command = new SqlCommand())
                 {
                     command.Connection = con;
                     command.CommandText = "SELECT PlayerKey FROM Player WHERE Name = @name;";
                     command.Parameters.AddWithValue("@name", playerName);
-                    SqlDataReader reader = command.ExecuteReader();
-                    while (reader.Read())
+                    con.Open();
+                    using (SqlDataReader reader = command.ExecuteReader())
                     {
-                        key = (int)reader["PlayerKey"];
+                        while (reader.Read())
+                        {
+                            key = (int)reader["PlayerKey"];
+                        }
                     }
                 }
             }
@@ -184,16 +207,18 @@ namespace MiniGameV4.Record
 
             using (SqlConnection con = new SqlConnection(connectionStr))
             {
-                con.Open();
                 using (SqlCommand command = new SqlCommand())
                 {
                     command.Connection = con;
                     command.CommandText = "SELECT GameRecordKey FROM GameRecord WHERE PlayerKey = @PlayerKey;";
                     command.Parameters.AddWithValue("@PlayerKey", GetPlayerKey());
-                    SqlDataReader reader = command.ExecuteReader();
-                    while (reader.Read())
+                    con.Open();
+                    using (SqlDataReader reader = command.ExecuteReader())
                     {
-                        key = (int)reader["GameRecordKey"];
+                        while (reader.Read())
+                        {
+                            key = (int)reader["GameRecordKey"];
+                        }
                     }
                 }
             }
@@ -207,19 +232,20 @@ namespace MiniGameV4.Record
 
             using (SqlConnection con = new SqlConnection(connectionStr))
             {
-                con.Open();
                 using (SqlCommand command = new SqlCommand())
                 {
                     command.Connection = con;
                     command.CommandText = "SELECT Name FROM Player WHERE Name = @name;";
                     command.Parameters.AddWithValue("@name", playerName);
-                    SqlDataReader reader = command.ExecuteReader();
-                    while (reader.Read())
+                    con.Open();
+                    using (SqlDataReader reader = command.ExecuteReader())
                     {
-                        if ((string)reader["Name"] == playerName)
+                        while (reader.Read())  // bool if it could read any data from database
                         {
-
-                            exist = true;
+                            if ((string)reader["Name"] == playerName)
+                            {
+                                exist = true;
+                            }
                         }
                     }
                 }
