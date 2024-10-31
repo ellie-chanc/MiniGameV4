@@ -21,9 +21,11 @@ namespace MiniGameV4.Logic
         private List<Food> foodList;
         private Dashboard dashboard;
         private bool shouldExit;
-        private bool timeout;
+        private bool roundTimeout;
+        private bool gameTimeout;
         private Thread countDown;
-        private int gameRoundTime = 10;
+        private int roundTime = 10;  // 10 seconds for each round
+        private int gameTime = 20;  // 20 seconds for the game
 
         // constructor for initialising game
         public Game()
@@ -50,9 +52,11 @@ namespace MiniGameV4.Logic
 
             shouldExit = false;
 
-            timeout = false;
+            roundTimeout = false;
 
-            countDown = new Thread(() => StartCountdown(ref gameRoundTime, ref shouldExit, ref timeout));
+            gameTimeout = false;
+
+            countDown = new Thread(() => StartCountdown(ref gameTime, ref roundTime, ref shouldExit, ref gameTimeout, ref roundTimeout));
 
         }
 
@@ -60,7 +64,7 @@ namespace MiniGameV4.Logic
         {
             Console.CursorVisible = false;
             countDown.Start();
-            while (!shouldExit && !timeout)
+            while (!shouldExit && !roundTimeout && !gameTimeout)
             {
                 if (board.TerminalResized())
                 {
@@ -106,9 +110,8 @@ namespace MiniGameV4.Logic
                             dashboard.UpdateConsumedFood();
                             p.ChangeState(foodList[i].GetCurrentFoodType());
                             foodList[i].UpdateFood();
-                            // foodList.Add(new Food(board.GetCurrentWidth(), board.GetCurrentHeight()));
                             dashboard.UpdatePlayerState(p.GetCurrentState());
-                            gameRoundTime = 10;
+                            roundTime = 10;
                         }
                     }
 
@@ -121,14 +124,19 @@ namespace MiniGameV4.Logic
                 }
             }
 
-            if (timeout)
+            if (roundTimeout)
             {
                 Console.Clear();
                 Console.WriteLine("Too slow! Game Over. Program exiting...");
                 Thread.Sleep(2000);
             }
-
-            if (shouldExit)
+            else if (gameTimeout)
+            {
+                Console.Clear();
+                Console.WriteLine("Congratulations! This is the end of the game. Program exiting...");
+                Thread.Sleep(2000);
+            }
+            else if (shouldExit)
             {
                 Console.Clear();
                 Console.WriteLine("Escape key pressed. Program exiting...");
@@ -137,18 +145,26 @@ namespace MiniGameV4.Logic
             countDown.Join();
         }
 
-        private void StartCountdown(ref int sec, ref bool shouldExit, ref bool timeOut)
+        private void StartCountdown(ref int gameTime, ref int roundTime, ref bool shouldExit, ref bool gameTimeout, ref bool roundTimeout)
         {
-            while (sec > 0)
+            while (gameTime > 0)
             {
                 if (shouldExit)
                 {
                     return;
                 }
+
+                if (roundTime <= 0)
+                {
+                    roundTimeout = true;
+                    return;
+                }
+
                 Thread.Sleep(1000);
-                sec--;
+                roundTime--;
+                gameTime--;
             }
-            timeOut = true;
+            gameTimeout = true;
         }
     }
 }
