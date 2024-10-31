@@ -24,8 +24,10 @@ namespace MiniGameV4.Logic
         private bool roundTimeout;
         private bool gameTimeout;
         private Thread countDown;
-        private int roundTime = 10;  // 10 seconds for each round
-        private int gameTime = 20;  // 20 seconds for the game
+        private const int roundTime = 10;  // 10 seconds for each round
+        private const int gameTime = 20;  // 20 seconds for the game
+        private int currentRoundTime;
+        private int currentGameTime;
 
         // constructor for initialising game
         public Game()
@@ -56,7 +58,11 @@ namespace MiniGameV4.Logic
 
             gameTimeout = false;
 
-            countDown = new Thread(() => StartCountdown(ref gameTime, ref roundTime, ref shouldExit, ref gameTimeout, ref roundTimeout));
+            currentRoundTime = roundTime;
+
+            currentGameTime = gameTime;
+
+            countDown = new Thread(() => StartCountdown(ref currentGameTime, ref currentRoundTime, ref shouldExit, ref gameTimeout, ref roundTimeout));
 
         }
 
@@ -111,7 +117,7 @@ namespace MiniGameV4.Logic
                             p.ChangeState(foodList[i].GetCurrentFoodType());
                             foodList[i].UpdateFood();
                             dashboard.UpdatePlayerState(p.GetCurrentState());
-                            roundTime = 10;
+                            currentRoundTime = 10;
                         }
                     }
 
@@ -145,24 +151,24 @@ namespace MiniGameV4.Logic
             countDown.Join();
         }
 
-        private void StartCountdown(ref int gameTime, ref int roundTime, ref bool shouldExit, ref bool gameTimeout, ref bool roundTimeout)
+        private void StartCountdown(ref int currentGameTime, ref int currentRoundTime, ref bool shouldExit, ref bool gameTimeout, ref bool roundTimeout)
         {
-            while (gameTime > 0)
+            while (currentGameTime > 0)
             {
                 if (shouldExit)
                 {
                     return;
                 }
 
-                if (roundTime <= 0)
+                if (currentRoundTime <= 0)
                 {
                     roundTimeout = true;
                     return;
                 }
 
                 Thread.Sleep(1000);
-                roundTime--;
-                gameTime--;
+                currentRoundTime--;
+                currentGameTime--;
             }
             gameTimeout = true;
         }
