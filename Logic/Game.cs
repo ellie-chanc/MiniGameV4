@@ -117,7 +117,7 @@ namespace MiniGameV4.Logic
                             p.ChangeState(foodList[i].GetCurrentFoodType());
                             foodList[i].UpdateFood();
                             dashboard.UpdatePlayerState(p.GetCurrentState());
-                            currentRoundTime = 10;
+                            currentRoundTime = roundTime;
                         }
                     }
 
