@@ -73,30 +73,21 @@ namespace MiniGameV4.Record
                     {
                         g.FoodConsumed, 
                         u.Username,
-                        u.UserId,
                         u.FirstName,
                         u.LastName,
                     }
                 )
-                .GroupBy(x => x.UserId)
-                .Select(group => new
-                {
-                    HighestFoodConsumed = group.Max(x => x.FoodConsumed),
-                    username = group.First().Username,
-                    firstName = group.First().FirstName,
-                    lastName = group.First().LastName,
-                })
-                .OrderByDescending(x => x.HighestFoodConsumed)
+                .OrderByDescending(x => x.FoodConsumed)
                 .Take(10)
                 .ToList();
 
             // list top ten players with higest number of food items consumed
-            Console.WriteLine("\nTop ten players: ");
+            Console.WriteLine("\nTop ten records: ");
             Console.WriteLine("{0, -20} {1, -20} {2, -20} {3, -20} {4, -20}", "Rank", "Highest score", "Username", "First Name", "Last name");
 
             for (int i = 0; i < topPlayers.Count(); i++)
             {
-                Console.WriteLine("{0, -20} {1, -20} {2, -20} {3, -20} {4, -20}", i + 1, topPlayers[i].HighestFoodConsumed, topPlayers[i].username, topPlayers[i].firstName, topPlayers[i].lastName);
+                Console.WriteLine("{0, -20} {1, -20} {2, -20} {3, -20} {4, -20}", i + 1, topPlayers[i].FoodConsumed, topPlayers[i].Username, topPlayers[i].FirstName, topPlayers[i].LastName);
             }
         }
 
