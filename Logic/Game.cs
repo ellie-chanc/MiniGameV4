@@ -130,25 +130,29 @@ namespace MiniGameV4.Logic
                 }
             }
 
+            countDown.Join();
+        }
+
+        public void End()
+        {
+            Console.Clear();
+
             if (roundTimeout)
             {
-                Console.Clear();
-                Console.WriteLine("Too slow! Game Over. Program exiting...");
-                Thread.Sleep(2000);
+                Console.WriteLine("Too slow! Game Over. Program exiting...\n");
             }
             else if (gameTimeout)
             {
-                Console.Clear();
-                Console.WriteLine("Congratulations! This is the end of the game. Program exiting...");
-                Thread.Sleep(2000);
+                Console.WriteLine("Congratulations! This is the end of the game. Hope you enjoy it. Program exiting...\n");
             }
             else if (shouldExit)
             {
-                Console.Clear();
-                Console.WriteLine("Escape key pressed. Program exiting...");
+                Console.WriteLine("Escape key pressed. Program exiting...\n");
             }
 
-            countDown.Join();
+            dashboard.PrintSummary();
+
+            Thread.Sleep(2000);
         }
 
         private void StartCountdown(ref int currentGameTime, ref int currentRoundTime, ref bool shouldExit, ref bool gameTimeout, ref bool roundTimeout)

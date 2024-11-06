@@ -9,6 +9,10 @@ using MiniGameV4.Role;
 using Microsoft.Data.SqlClient;
 using System.Reflection.Metadata.Ecma335;
 using System.Net.Http.Headers;
+using MiniGameV4.Data;
+using MiniGameV4.Model;
+using Microsoft.EntityFrameworkCore;
+using System.Runtime.Versioning;
 
 namespace MiniGameV4.Record
 {
@@ -16,20 +20,25 @@ namespace MiniGameV4.Record
     {
         private UserAccount userAcc;
         private string playerName;
+        private GameStatus gameStatus;
         private int dashboardYUpperLimit;
         private int dashboardXLimit;
         private const int dashboardHeight = 3;
         private int consumedFoodNumber;
         private CharacterState playerState;
-        private string connectionStr = "Data Source=L-6BKGP34;Initial Catalog=MiniGameV4;Integrated Security=True;Encrypt=False;Trust Server Certificate=True";
+        private GameContext gameContext;
 
         public Dashboard(int height, int width)
         {
-            userAcc = new UserAccount();
-            playerName = userAcc.GetUserName();
+            PrintIntro();
+            gameContext = new GameContext();
+            userAcc = new UserAccount(gameContext);
+            playerName = userAcc.GetUsername();
+            gameStatus = new GameStatus(gameContext, userAcc.GetUserId());
             dashboardYUpperLimit = height + 1;
             dashboardXLimit = width;
             consumedFoodNumber = 0;
+            Console.Clear();
             PrintDashboard();
         }
 
@@ -38,25 +47,7 @@ namespace MiniGameV4.Record
             consumedFoodNumber++;
 
             // update database
-            using (SqlConnection con = new SqlConnection(connectionStr))
-            {
-                using (SqlCommand command = new SqlCommand())
-                {
-                    command.Connection = con;
-                    command.CommandText = "UPDATE GameRecord SET FoodConsumed = @FoodConsumed WHERE GameRecordKey = @GameRecordKey;";
-
-                    SqlParameter FoodConsumedParam = new SqlParameter("FoodConsumed", System.Data.SqlDbType.Int);
-                    FoodConsumedParam.Value = consumedFoodNumber;
-                    command.Parameters.Add(FoodConsumedParam);
-
-                    SqlParameter GameRecordKeyParam = new SqlParameter("GameRecordKey", System.Data.SqlDbType.Int);
-                    GameRecordKeyParam.Value = GetGameRecordKey();
-                    command.Parameters.Add(GameRecordKeyParam);
-
-                    con.Open();
-                    command.ExecuteNonQuery();
-                }
-            }
+            gameStatus.UpdateConsumedFoodNumber();
 
             PrintDashboard();
         }
@@ -65,6 +56,60 @@ namespace MiniGameV4.Record
         {
             playerState = state;
             PrintDashboard();
+        }
+
+        public void PrintSummary()
+        {
+            Console.WriteLine("Summary: ");
+            Console.WriteLine($"{playerName} has consumed {consumedFoodNumber} food.");
+
+            var topPlayers = gameContext.GameRecord
+                .Join
+                (
+                    gameContext.User, 
+                    g => g.UserId, 
+                    u => u.UserId, 
+                    (g, u) => new 
+                    {
+                        g.FoodConsumed, 
+                        u.Username,
+                        u.UserId,
+                        u.FirstName,
+                        u.LastName,
+                    }
+                )
+                .GroupBy(x => x.UserId)
+                .Select(group => new
+                {
+                    HighestFoodConsumed = group.Max(x => x.FoodConsumed),
+                    username = group.First().Username,
+                    firstName = group.First().FirstName,
+                    lastName = group.First().LastName,
+                })
+                .OrderByDescending(x => x.HighestFoodConsumed)
+                .Take(10)
+                .ToList();
+
+            // list top ten players with higest number of food items consumed
+            Console.WriteLine("\nTop ten players: ");
+            Console.WriteLine("{0, -20} {1, -20} {2, -20} {3, -20} {4, -20}", "Rank", "Highest score", "Username", "First Name", "Last name");
+
+            for (int i = 0; i < topPlayers.Count(); i++)
+            {
+                Console.WriteLine("{0, -20} {1, -20} {2, -20} {3, -20} {4, -20}", i + 1, topPlayers[i].HighestFoodConsumed, topPlayers[i].username, topPlayers[i].firstName, topPlayers[i].lastName);
+            }
+        }
+
+        private void PrintIntro()
+        {
+            Console.Clear();
+            Console.WriteLine("Introduction: ");
+            Console.WriteLine("You are feeling really hungry right now and just wants something to eat!");
+            Console.WriteLine("You have to eat a food item { # $ @ } within 10 seconds.");
+            Console.WriteLine("Be careful, you will get hurt if you collide with a Bad Guy <'o'>");
+            Console.WriteLine("Press [Enter] to continue");
+            Console.ReadLine();
+            Console.Clear();
         }
 
         private void PrintDashboard()
@@ -87,31 +132,6 @@ namespace MiniGameV4.Record
                     Console.Write(" ");
                 }
             }
-        }
-
-        private int GetGameRecordKey()
-        {
-            int key = 0;
-
-            using (SqlConnection con = new SqlConnection(connectionStr))
-            {
-                using (SqlCommand command = new SqlCommand())
-                {
-                    command.Connection = con;
-                    command.CommandText = "SELECT GameRecordKey FROM GameRecord WHERE PlayerKey = @PlayerKey;";
-                    command.Parameters.AddWithValue("@PlayerKey", userAcc.GetPlayerKey());
-                    con.Open();
-                    using (SqlDataReader reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            key = (int)reader["GameRecordKey"];
-                        }
-                    }
-                }
-            }
-
-            return key;
         }
     }
 }

@@ -5,74 +5,76 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
+using MiniGameV4.Data;
+using MiniGameV4.Model;
 using MiniGameV4.Exceptions;
 
 namespace MiniGameV4.Record
 {
-    class UserAccount
+    internal class UserAccount
     {
-        private string userName;
-        private string connectionStr = "Data Source=L-6BKGP34;Initial Catalog=MiniGameV4;Integrated Security=True;Encrypt=False;Trust Server Certificate=True";
+        private User user;
+        private GameContext gameContext;
 
-        public UserAccount()
+        public UserAccount(GameContext context)
         {
-            userName = SetUserName();
+            gameContext = context;
 
-            // create new player if not already existed in database
-            if (!CheckExistingPlayer())
+            string username = SetName(NameType.Username);
+
+            // get user if already exist in database
+            User? u = gameContext.User.Where(x => x.Username == username).FirstOrDefault();
+
+            if (u == null)
             {
-                using (SqlConnection con = new SqlConnection(connectionStr))
-                {
-                    using (SqlCommand command = new SqlCommand())
-                    {
-                        // set command properties
-                        command.Connection = con;
-                        command.CommandText = "INSERT INTO Player(Name) VALUES (@Name);";
-
-                        // set parameters of command
-                        SqlParameter nameParam = new SqlParameter("Name", System.Data.SqlDbType.NVarChar);
-                        nameParam.Value = userName;
-                        command.Parameters.Add(nameParam);
-
-                        // open connection and execute query
-                        con.Open();
-                        command.ExecuteNonQuery();
-                    }
-                }
+                // create and insert new user to database if not already existed
+                user = new User();
+                user.Username = username;
+                user.FirstName = SetName(NameType.FirstName);
+                user.LastName = SetName(NameType.LastName);
+                gameContext.Add(user);
+                gameContext.SaveChanges();
             }
-
-            // create new game record in database
-            using (SqlConnection con = new SqlConnection(connectionStr))
+            else
             {
-                using (SqlCommand command = new SqlCommand())
-                {
-                    command.Connection = con;
-                    command.CommandText = "INSERT INTO GameRecord(PlayerKey, FoodConsumed) VALUES(@PlayerKey, @FoodConsumed);";
-
-                    SqlParameter PlayerKeyParam = new SqlParameter("PlayerKey", System.Data.SqlDbType.Int);
-                    PlayerKeyParam.Value = GetPlayerKey();
-                    command.Parameters.Add(PlayerKeyParam);
-
-                    SqlParameter FoodConsumedParam = new SqlParameter("FoodConsumed", System.Data.SqlDbType.Int);
-                    FoodConsumedParam.Value = 0;
-                    command.Parameters.Add(FoodConsumedParam);
-
-                    con.Open();
-                    command.ExecuteNonQuery();
-                }
+                // make u as current user if already exist in database
+                user = u;
             }
         }
 
-        private string SetUserName()
+        public int GetUserId()
+        {
+            return user.UserId;
+        }
+
+        public string GetUsername()
+        {
+            return user.Username;
+        }
+
+        private string SetName(NameType nameType)
         {
             string? name;
             string pattern = @"^[a-zA-Z0-9]*$";
             Regex re = new Regex(pattern);
+            string question = "";
 
-            Console.SetCursorPosition(0, 0);
+            switch (nameType)
+            {
+                case NameType.Username:
+                    question = "Please enter your username or register a new username: ";
+                    break;
+                case NameType.FirstName:
+                    question = "Please enter your first name: ";
+                    break;
+                case NameType.LastName:
+                    question = "Please enter your last name: ";
+                    break;
+            }
+
             while (true)
             {
-                Console.Write("Player's name: ");
+                Console.Write(question);
                 try
                 {
                     name = Console.ReadLine();
@@ -80,6 +82,11 @@ namespace MiniGameV4.Record
                     if (string.IsNullOrEmpty(name))
                     {
                         throw new ArgumentException("Input cannot be null or empty.");
+                    }
+
+                    if (name.Length >= 15)
+                    {
+                        throw new ArgumentException("Input cannot be longer than 15 characters.");
                     }
 
                     if (!re.IsMatch(name))
@@ -104,66 +111,7 @@ namespace MiniGameV4.Record
                 }
             }
 
-            Console.Clear();
             return name;
-        }
-
-        public int GetPlayerKey()
-        {
-            int key = 0;
-
-            using (SqlConnection con = new SqlConnection(connectionStr))
-            {
-                using (SqlCommand command = new SqlCommand())
-                {
-                    command.Connection = con;
-                    command.CommandText = "SELECT PlayerKey FROM Player WHERE Name = @name;";
-                    command.Parameters.AddWithValue("@name", userName);
-                    con.Open();
-                    using (SqlDataReader reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            key = (int)reader["PlayerKey"];
-                        }
-                    }
-                }
-            }
-
-            return key;
-        }
-
-        private bool CheckExistingPlayer()
-        {
-            bool exist = false;
-
-            using (SqlConnection con = new SqlConnection(connectionStr))
-            {
-                using (SqlCommand command = new SqlCommand())
-                {
-                    command.Connection = con;
-                    command.CommandText = "SELECT Name FROM Player WHERE Name = @name;";
-                    command.Parameters.AddWithValue("@name", userName);
-                    con.Open();
-                    using (SqlDataReader reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())  // bool if it could read any data from database
-                        {
-                            if ((string)reader["Name"] == userName)
-                            {
-                                exist = true;
-                            }
-                        }
-                    }
-                }
-            }
-
-            return exist;
-        }
-
-        public string GetUserName()
-        {
-            return userName;
         }
     }
 }

@@ -13,6 +13,7 @@ namespace MiniGameV4
         {
             Game game = new Game();
             game.Run();
+            game.End();
         }
     }
 }
